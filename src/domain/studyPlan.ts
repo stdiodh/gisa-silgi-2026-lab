@@ -1,6 +1,6 @@
-import { addDays, differenceInCalendarDays, format, startOfDay } from 'date-fns';
-
 export const EXAM_DATE = '2026-07-19';
+const kstOffsetMs = 9 * 60 * 60 * 1000;
+const dayMs = 24 * 60 * 60 * 1000;
 
 export interface StudyPlanItem {
   date: string;
@@ -10,8 +10,25 @@ export interface StudyPlanItem {
   checklist: string[];
 }
 
+function toKstDateKey(date: Date) {
+  return new Date(date.getTime() + kstOffsetMs).toISOString().slice(0, 10);
+}
+
+function dateKeyToUtcMs(dateKey: string) {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  return Date.UTC(year, month - 1, day);
+}
+
+function addDaysToDateKey(dateKey: string, amount: number) {
+  return new Date(dateKeyToUtcMs(dateKey) + amount * dayMs).toISOString().slice(0, 10);
+}
+
+function diffDateKeys(fromDateKey: string, toDateKey: string) {
+  return Math.round((dateKeyToUtcMs(toDateKey) - dateKeyToUtcMs(fromDateKey)) / dayMs);
+}
+
 export function calculateDday(currentDate = new Date(), examDate = new Date(EXAM_DATE)) {
-  return differenceInCalendarDays(startOfDay(examDate), startOfDay(currentDate));
+  return diffDateKeys(toKstDateKey(currentDate), toKstDateKey(examDate));
 }
 
 export function getPlanForDday(dday: number): Omit<StudyPlanItem, 'date' | 'dday'> {
@@ -71,16 +88,18 @@ export function getPlanForDday(dday: number): Omit<StudyPlanItem, 'date' | 'dday
 }
 
 export function generateStudyPlan(currentDate = new Date(), examDate = new Date(EXAM_DATE)) {
-  const dday = calculateDday(currentDate, examDate);
+  const currentDateKey = toKstDateKey(currentDate);
+  const examDateKey = toKstDateKey(examDate);
+  const dday = diffDateKeys(currentDateKey, examDateKey);
   const days = Math.max(0, dday);
 
   return Array.from({ length: days + 1 }, (_, index) => {
-    const date = addDays(startOfDay(currentDate), index);
-    const itemDday = calculateDday(date, examDate);
+    const date = addDaysToDateKey(currentDateKey, index);
+    const itemDday = diffDateKeys(date, examDateKey);
     const plan = getPlanForDday(itemDday);
 
     return {
-      date: format(date, 'yyyy-MM-dd'),
+      date,
       dday: itemDday,
       ...plan,
     };
