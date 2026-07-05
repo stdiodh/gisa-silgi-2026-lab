@@ -1,0 +1,16 @@
+node_modules
+dist
+.env
+.env.*
+*.pdf
+*.zip
+*.7z
+*.rar
+*.db
+*.sqlite
+materials/private/
+data/private/
+imports/raw/
+.local/
+.DS_Store
+coverage
