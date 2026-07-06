@@ -215,6 +215,49 @@ export async function getMockResults() {
   return db.mockResults.orderBy('startedAt').reverse().toArray();
 }
 
+export async function getLocalDataCounts() {
+  const [questions, attempts, reviews, sessions, mockResults, dailyMissions, wrongAnalyses, userTraceSteps] =
+    await Promise.all([
+      db.questions.count(),
+      db.attempts.count(),
+      db.reviews.count(),
+      db.sessions.count(),
+      db.mockResults.count(),
+      db.dailyMissions.count(),
+      db.wrongAnalyses.count(),
+      db.userTraceSteps.count(),
+    ]);
+
+  return {
+    questions,
+    attempts,
+    reviews,
+    sessions,
+    mockResults,
+    dailyMissions,
+    wrongAnalyses,
+    userTraceSteps,
+  };
+}
+
+export async function resetStudyProgress() {
+  await db.transaction(
+    'rw',
+    [db.attempts, db.reviews, db.sessions, db.mockResults, db.dailyMissions, db.wrongAnalyses, db.userTraceSteps],
+    async () => {
+      await Promise.all([
+        db.attempts.clear(),
+        db.reviews.clear(),
+        db.sessions.clear(),
+        db.mockResults.clear(),
+        db.dailyMissions.clear(),
+        db.wrongAnalyses.clear(),
+        db.userTraceSteps.clear(),
+      ]);
+    },
+  );
+}
+
 export async function resetLocalData() {
   await db.transaction(
     'rw',
