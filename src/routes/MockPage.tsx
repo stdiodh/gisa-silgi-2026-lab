@@ -1,8 +1,9 @@
 import { Clock, Play, Save } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { QuestionMeta } from '../components/question/QuestionMeta';
 import { Badge } from '../components/ui/Badge';
-import { Button } from '../components/ui/Button';
+import { Button, buttonClassName } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Select, TextArea, TextInput } from '../components/ui/Field';
 import { saveMockResult } from '../db/repository';
@@ -26,6 +27,10 @@ export function MockPage() {
   const sqlCount = useMemo(
     () => examQuestions.filter((question) => question.language === 'SQL' || question.type === 'sql-result').length,
     [examQuestions],
+  );
+  const unansweredCount = useMemo(
+    () => examQuestions.filter((question) => !(answers[question.id] ?? '').trim()).length,
+    [answers, examQuestions],
   );
 
   const handleStart = () => {
@@ -80,7 +85,7 @@ export function MockPage() {
         </div>
         {examQuestions.length > 0 && (
           <p className="mt-3 text-sm text-ink-muted dark:text-slate-400">
-            제한 시간 {limitMinutes}분 · 코드 출력 {codeCount}문항 · SQL {sqlCount}문항
+            제한 시간 {limitMinutes}분 · 코드 출력 {codeCount}문항 · SQL {sqlCount}문항 · 남은 답안 {unansweredCount}개
           </p>
         )}
       </Card>
@@ -110,8 +115,8 @@ export function MockPage() {
               </div>
             </Card>
           ))}
-          <Button variant="primary" icon={<Save className="h-4 w-4" />} onClick={handleSubmit}>
-            제출 및 채점
+          <Button disabled={unansweredCount > 0} variant="primary" icon={<Save className="h-4 w-4" />} onClick={handleSubmit}>
+            {unansweredCount > 0 ? `${unansweredCount}개 답안 남음` : '제출 및 채점'}
           </Button>
         </div>
       )}
@@ -135,6 +140,14 @@ export function MockPage() {
                 </p>
               </div>
             ))}
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link className={buttonClassName()} to="/wrong">
+              오답노트 보기
+            </Link>
+            <Link className={buttonClassName()} to="/review">
+              다음 복습 예약 확인
+            </Link>
           </div>
         </Card>
       )}

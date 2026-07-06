@@ -15,10 +15,14 @@ const variants: Record<ButtonVariant, string> = {
   danger: 'bg-state-error text-white hover:bg-state-errorHover dark:bg-red-500 dark:text-white dark:hover:bg-red-400',
 };
 
+export function buttonClassName(variant: ButtonVariant = 'secondary', className = '') {
+  return `focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-50 ${variants[variant]} ${className}`;
+}
+
 export function Button({ variant = 'secondary', icon, className = '', children, ...props }: ButtonProps) {
   return (
     <button
-      className={`focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-50 ${variants[variant]} ${className}`}
+      className={buttonClassName(variant, className)}
       {...props}
     >
       {icon}

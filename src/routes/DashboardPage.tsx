@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SevenDayChart } from '../components/dashboard/SevenDayChart';
 import { Badge } from '../components/ui/Badge';
-import { Button } from '../components/ui/Button';
+import { buttonClassName } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { getDashboardStats, seedSampleQuestions } from '../db/repository';
 import { calculateDday, EXAM_DATE } from '../domain/studyPlan';
@@ -58,8 +58,8 @@ export function DashboardPage() {
       <Card
         title="오늘 반드시 풀어야 할 문제"
         action={
-          <Link to="/daily">
-            <Button variant="primary">Daily Mission 시작</Button>
+          <Link className={buttonClassName('primary')} to="/daily">
+            Daily Mission 시작
           </Link>
         }
       >

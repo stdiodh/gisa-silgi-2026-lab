@@ -1,21 +1,35 @@
-import { useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { QuestionSolver } from '../components/question/QuestionSolver';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { trendSources } from '../data/trendSources';
 import { trend2026Round1Weights } from '../data/trendWeights';
+import type { QuestionLanguage } from '../domain/question';
 import { useQuestions } from '../hooks/useRepositoryData';
+
+const drillLanguages: QuestionLanguage[] = ['C', 'Java', 'Python', 'SQL'];
 
 export function TrendPage() {
   const { questions, loading, refresh } = useQuestions();
+  const [activeLanguage, setActiveLanguage] = useState<QuestionLanguage | 'all'>('all');
+  const solverRef = useRef<HTMLDivElement>(null);
   const trendQuestions = useMemo(() => questions.filter((question) => question.trend2026Round1), [questions]);
   const codeCount = trendQuestions.filter((question) => question.type === 'code-output').length;
-  const languageCounts = ['C', 'Java', 'Python', 'SQL'].map((language) => ({
+  const languageCounts = drillLanguages.map((language) => ({
     language,
     count: trendQuestions.filter((question) => question.language === language && question.type === 'code-output').length,
   }));
+  const activeQuestions = useMemo(
+    () => (activeLanguage === 'all' ? trendQuestions : trendQuestions.filter((question) => question.language === activeLanguage)),
+    [activeLanguage, trendQuestions],
+  );
   const restoredSource = trendSources.find((source) => source.id === 'restored-2026-round1-patterns');
+
+  const startDrill = (language: QuestionLanguage | 'all') => {
+    setActiveLanguage(language);
+    requestAnimationFrame(() => solverRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
 
   if (loading) return <Card title="2026 1회 경향 집중 모드">문제를 불러오는 중입니다.</Card>;
 
@@ -72,12 +86,28 @@ export function TrendPage() {
           ))}
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
-          {['C', 'Java', 'Python', 'SQL'].map((language) => (
-            <Button key={language}>{language} drill 시작</Button>
+          <Button variant={activeLanguage === 'all' ? 'primary' : 'secondary'} onClick={() => startDrill('all')}>
+            전체 drill 시작
+          </Button>
+          {drillLanguages.map((language) => (
+            <Button
+              key={language}
+              variant={activeLanguage === language ? 'primary' : 'secondary'}
+              onClick={() => startDrill(language)}
+            >
+              {language} drill 시작
+            </Button>
           ))}
         </div>
       </Card>
-      <QuestionSolver questions={trendQuestions} mode="trend-2026-1" title="2026 1회 경향 문제" onAnswered={refresh} />
+      <div ref={solverRef}>
+        <QuestionSolver
+          questions={activeQuestions}
+          mode="trend-2026-1"
+          title={activeLanguage === 'all' ? '2026 1회 경향 문제' : `${activeLanguage} 경향 drill`}
+          onAnswered={refresh}
+        />
+      </div>
     </div>
   );
 }

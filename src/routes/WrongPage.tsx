@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { QuestionSolver } from '../components/question/QuestionSolver';
 import { Badge } from '../components/ui/Badge';
+import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { getWrongAnalyses, getWrongAttempts } from '../db/repository';
 import type { Attempt, Question, WrongAnalysis } from '../domain/question';
@@ -10,6 +11,10 @@ export function WrongPage() {
   const { questions, loading, refresh } = useQuestions();
   const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [analyses, setAnalyses] = useState<WrongAnalysis[]>([]);
+  const [drillQuestions, setDrillQuestions] = useState<Question[]>([]);
+  const [drillTitle, setDrillTitle] = useState('같은 태그 5문항 더 풀기');
+  const [drillKey, setDrillKey] = useState(0);
+  const drillRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     void getWrongAttempts().then(setAttempts);
@@ -26,6 +31,28 @@ export function WrongPage() {
     const wrongIds = new Set(wrongQuestions.map((question) => question.id));
     return questions.filter((question) => !wrongIds.has(question.id) && question.tags.some((tag) => weakTags.has(tag))).slice(0, 6);
   }, [questions, wrongQuestions]);
+  const mustReviewQuestions = useMemo(() => {
+    const ids = analyses.filter((analysis) => analysis.mustReviewBeforeExam).map((analysis) => analysis.questionId);
+    return ids.map((id) => questions.find((question) => question.id === id)).filter(Boolean) as Question[];
+  }, [analyses, questions]);
+
+  const startDrill = (nextQuestions: Question[], title: string) => {
+    if (!nextQuestions.length) return;
+    setDrillQuestions(nextQuestions);
+    setDrillTitle(title);
+    setDrillKey((value) => value + 1);
+    requestAnimationFrame(() => drillRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
+
+  const startFinalPack = () => {
+    const seen = new Set<string>();
+    const pack = [...mustReviewQuestions, ...wrongQuestions, ...recommended].filter((question) => {
+      if (seen.has(question.id)) return false;
+      seen.add(question.id);
+      return true;
+    });
+    startDrill(pack.slice(0, 10), 'D-1 최종 오답팩');
+  };
 
   if (loading) return <Card title="오답노트">문제를 불러오는 중입니다.</Card>;
 
@@ -55,6 +82,9 @@ export function WrongPage() {
           <p className="text-sm leading-6 text-ink-muted dark:text-slate-400">
             mustReviewBeforeExam 문제와 같은 태그 문제를 묶어 D-1에는 새 문제 대신 이 목록만 반복합니다.
           </p>
+          <Button className="mt-4" disabled={!mustReviewQuestions.length && !wrongQuestions.length} onClick={startFinalPack}>
+            최종 오답팩 시작
+          </Button>
         </Card>
       </div>
 
@@ -63,6 +93,9 @@ export function WrongPage() {
         <Card title="같은 태그 추천">
           {recommended.length ? (
             <div className="space-y-2">
+              <Button className="w-full" variant="primary" onClick={() => startDrill(recommended.slice(0, 5), '같은 태그 5문항 더 풀기')}>
+                같은 태그 5문항 더 풀기
+              </Button>
               {recommended.map((question) => (
                 <div key={question.id} className="rounded-2xl border border-line-subtle bg-surface-muted p-4 dark:border-slate-800 dark:bg-slate-800">
                   <p className="text-sm font-medium">{question.title}</p>
@@ -79,6 +112,12 @@ export function WrongPage() {
           )}
         </Card>
       </div>
+
+      {drillQuestions.length > 0 && (
+        <div ref={drillRef}>
+          <QuestionSolver key={drillKey} questions={drillQuestions} mode="wrong" title={drillTitle} onAnswered={refresh} />
+        </div>
+      )}
     </div>
   );
 }

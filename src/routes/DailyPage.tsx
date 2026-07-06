@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { QuestionSolver } from '../components/question/QuestionSolver';
 import { Badge } from '../components/ui/Badge';
-import { Button } from '../components/ui/Button';
+import { Button, buttonClassName } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import {
   completeDailyMission,
@@ -20,7 +20,10 @@ function scoreMission(mission: DailyMission, attempts: Attempt[], questions: Que
   const scoped = attempts.filter((attempt) => ids.has(attempt.questionId));
   const latest = new Map<string, Attempt>();
   for (const attempt of scoped) {
-    if (!latest.has(attempt.questionId)) latest.set(attempt.questionId, attempt);
+    const previous = latest.get(attempt.questionId);
+    if (!previous || new Date(attempt.answeredAt).getTime() > new Date(previous.answeredAt).getTime()) {
+      latest.set(attempt.questionId, attempt);
+    }
   }
   const solved = [...latest.values()];
   const correct = solved.filter((attempt) => attempt.isCorrect).length;
@@ -77,6 +80,9 @@ export function DailyPage() {
 
   const score = scoreMission(mission, attempts, questions);
   const tomorrowPlan = fixedExamPlan.find((plan) => plan.dday === mission.dday - 1);
+  const remainingCount = Math.max(mission.questionIds.length - score.solved, 0);
+  const progressPercent = mission.questionIds.length ? Math.round((score.solved / mission.questionIds.length) * 100) : 100;
+  const canComplete = remainingCount === 0;
 
   if (mission.dday === 0) {
     return (
@@ -119,8 +125,9 @@ export function DailyPage() {
         title="미션 구성"
         action={
           mission.completedAt ? (
-            <Link to="/review">
-              <Button icon={<NotebookTabs className="h-4 w-4" />}>추가 복습</Button>
+            <Link className={buttonClassName()} to="/review">
+              <NotebookTabs className="h-4 w-4" />
+              추가 복습
             </Link>
           ) : null
         }
@@ -150,6 +157,15 @@ export function DailyPage() {
             </Badge>
           ))}
         </div>
+        <div className="mt-5">
+          <div className="mb-2 flex items-center justify-between text-xs font-bold text-ink-muted dark:text-slate-400">
+            <span>오늘 세트 진행률</span>
+            <span>{progressPercent}%</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-surface-muted dark:bg-slate-800">
+            <div className="h-full rounded-full bg-brand-secondary" style={{ width: `${Math.min(progressPercent, 100)}%` }} />
+          </div>
+        </div>
       </Card>
 
       {mission.completedAt ? (
@@ -175,12 +191,14 @@ export function DailyPage() {
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Link to="/review">
-              <Button icon={<NotebookTabs className="h-4 w-4" />}>추가 복습</Button>
+            <Link className={buttonClassName()} to="/review">
+              <NotebookTabs className="h-4 w-4" />
+              추가 복습
             </Link>
-            <Button disabled icon={<CheckCircle2 className="h-4 w-4" />} variant="secondary">
+            <Link className={buttonClassName('secondary')} to="/">
+              <CheckCircle2 className="h-4 w-4" />
               오늘 끝
-            </Button>
+            </Link>
           </div>
         </Card>
       ) : (
@@ -192,7 +210,9 @@ export function DailyPage() {
               <Button
                 variant="primary"
                 icon={<PlayCircle className="h-4 w-4" />}
+                disabled={!canComplete}
                 onClick={async () => {
+                  if (!canComplete) return;
                   const completed = await completeDailyMission(mission.date, {
                     score: score.score,
                     total: score.total,
@@ -202,12 +222,12 @@ export function DailyPage() {
                   await refresh();
                 }}
               >
-                완료 체크
+                {canComplete ? '완료 체크' : `${remainingCount}문항 남음`}
               </Button>
             }
           >
             <p className="text-sm text-ink-muted dark:text-slate-400">
-              오늘 한 세트를 끝냈다면 완료 체크를 누르세요. 같은 날짜에는 중복 완료 기록을 만들지 않습니다.
+              오늘 한 세트를 모두 풀면 완료 체크가 활성화됩니다. 같은 날짜에는 중복 완료 기록을 만들지 않습니다.
             </p>
           </Card>
         </>

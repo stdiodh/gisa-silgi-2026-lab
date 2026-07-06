@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { QuestionSolver } from '../components/question/QuestionSolver';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -28,10 +28,17 @@ export function RecentThreeYearsPage() {
   const [repeatOnly, setRepeatOnly] = useState(false);
   const [recentWrongOnly, setRecentWrongOnly] = useState(false);
   const [wrongAttempts, setWrongAttempts] = useState<Attempt[]>([]);
+  const [drillStarted, setDrillStarted] = useState(false);
+  const [drillKey, setDrillKey] = useState(0);
+  const solverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     void getWrongAttempts().then(setWrongAttempts);
   }, []);
+
+  useEffect(() => {
+    setDrillStarted(false);
+  }, [confidence, language, recentWrongOnly, repeatOnly, round, topic, type, year]);
 
   const topics = useMemo(() => [...new Set(questions.map((question) => question.topic))].sort(), [questions]);
   const repeatedTopics = useMemo(() => {
@@ -68,6 +75,12 @@ export function RecentThreeYearsPage() {
     () => generateMockQuestions(filtered.length ? filtered : questions, { recentThreeYears: true, count: 20, random: () => 0.42 }),
     [filtered, questions],
   );
+
+  const handleStartDrill = () => {
+    setDrillStarted(true);
+    setDrillKey((value) => value + 1);
+    requestAnimationFrame(() => solverRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
 
   if (loading) return <Card title="최근 3년+최신 경향">문제를 불러오는 중입니다.</Card>;
 
@@ -169,11 +182,28 @@ export function RecentThreeYearsPage() {
           </div>
         </div>
         <div className="mt-4">
-          <Button variant="primary">Drill 시작</Button>
+          <Button variant="primary" onClick={handleStartDrill}>
+            {drillStarted ? 'Drill 다시 시작' : 'Drill 시작'}
+          </Button>
+          {!filtered.length && (
+            <p className="mt-2 text-xs text-ink-muted dark:text-slate-400">
+              필터 결과가 없어 전체 샘플 문제 기준으로 drill을 생성합니다.
+            </p>
+          )}
         </div>
       </Card>
 
-      <QuestionSolver questions={drill} mode="recent-3-years" title="최근 3년+최신 Drill" onAnswered={refresh} />
+      {drillStarted ? (
+        <div ref={solverRef}>
+          <QuestionSolver key={drillKey} questions={drill} mode="recent-3-years" title="최근 3년+최신 Drill" onAnswered={refresh} />
+        </div>
+      ) : (
+        <Card title="Drill 대기">
+          <p className="text-sm text-ink-muted dark:text-slate-400">
+            필터와 20문항 구성을 확인한 뒤 Drill 시작을 누르면 풀이 화면이 열립니다.
+          </p>
+        </Card>
+      )}
     </div>
   );
 }

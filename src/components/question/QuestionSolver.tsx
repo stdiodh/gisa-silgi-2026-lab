@@ -56,6 +56,19 @@ function inferWrongPattern(question: Question, fallback: WrongPattern): WrongPat
   return fallback;
 }
 
+function hasTraceWork(steps: UserTraceStep[], outputBuffer: string) {
+  return (
+    outputBuffer.trim().length > 0 ||
+    steps.some(
+      (step) =>
+        (step.line?.trim().length ?? 0) > 0 ||
+        step.outputSoFar.trim().length > 0 ||
+        step.note.trim().length > 0 ||
+        Object.keys(step.variableSnapshot).length > 0,
+    )
+  );
+}
+
 export function QuestionSolver({ questions, mode, title = '문제 풀이', strictCodeOutput = false, onAnswered }: QuestionSolverProps) {
   const [index, setIndex] = useState(0);
   const [answer, setAnswer] = useState('');
@@ -99,12 +112,18 @@ export function QuestionSolver({ questions, mode, title = '문제 풀이', stric
 
   const handleCheck = async () => {
     if (!question) return;
-    const grade = gradeQuestion(question, answer, { strictCodeOutput: strictMode });
     const isTraceQuestion = question.type === 'code-output' || question.type === 'sql-result';
+    if (isTraceQuestion && !hasTraceWork(traceSteps, outputBuffer)) {
+      setReviewMessage('손코딩 Trace Pad에 한 줄 이상 작성한 뒤 정답을 확인하세요.');
+      return;
+    }
+
+    const grade = gradeQuestion(question, answer, { strictCodeOutput: strictMode });
     const nextWrongReason: WrongReason = !grade.isCorrect && isTraceQuestion ? '실수' : wrongReason;
     const nextWrongPattern: WrongPattern = inferWrongPattern(question, wrongPattern);
     setResult(grade);
     setShowAnswer(true);
+    setReviewMessage('');
     if (!grade.isCorrect && isTraceQuestion) {
       setWrongReason(nextWrongReason);
       setWrongPattern(nextWrongPattern);
@@ -136,7 +155,7 @@ export function QuestionSolver({ questions, mode, title = '문제 풀이', stric
 
   const handleAddWrong = async () => {
     if (!question) return;
-    await saveAttempt({
+    const attemptId = await saveAttempt({
       questionId: question.id,
       submittedAnswer: answer,
       isCorrect: false,
@@ -146,6 +165,14 @@ export function QuestionSolver({ questions, mode, title = '문제 풀이', stric
       wrongPattern,
       note,
     });
+    await saveUserTraceSteps(
+      traceSteps.map((step, stepIndex) => ({
+        ...step,
+        questionId: question.id,
+        attemptId,
+        step: stepIndex + 1,
+      })),
+    );
     await markWeak(question.id);
     await recordWrongAnalysis(question.id, wrongReason, wrongPattern);
     setReviewMessage('오답노트에 추가했습니다.');
@@ -268,7 +295,7 @@ export function QuestionSolver({ questions, mode, title = '문제 풀이', stric
             <Button icon={<BookmarkPlus className="h-4 w-4" />} onClick={handleAddWrong}>
               오답 추가
             </Button>
-            <Button icon={<RotateCcw className="h-4 w-4" />} onClick={() => setShowAnswer(true)}>
+            <Button disabled={!result} icon={<RotateCcw className="h-4 w-4" />} onClick={() => setShowAnswer(true)}>
               해설 보기
             </Button>
           </div>
@@ -321,6 +348,12 @@ export function QuestionSolver({ questions, mode, title = '문제 풀이', stric
 
           {showAnswer && (
             <div className="space-y-3">
+              <div>
+                <p className="text-xs font-bold text-ink-muted dark:text-slate-400">내 답</p>
+                <pre className="mt-2 whitespace-pre-wrap rounded-xl bg-surface-muted p-4 text-sm dark:bg-slate-800">
+                  {answer || '(빈 답안)'}
+                </pre>
+              </div>
               <div>
                 <p className="text-xs font-bold text-ink-muted dark:text-slate-400">정답</p>
                 <pre className="mt-2 whitespace-pre-wrap rounded-xl bg-surface-muted p-4 text-sm dark:bg-slate-800">
