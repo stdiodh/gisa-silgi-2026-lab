@@ -1,11 +1,12 @@
 import { Badge } from '../components/ui/Badge';
 import { Card } from '../components/ui/Card';
-import { calculateDday, EXAM_DATE, generateStudyPlan } from '../domain/studyPlan';
+import { calculateDday, EXAM_DATE, generateFixedExamPlan, toKstDateKey } from '../domain/studyPlan';
 
 export function PlanPage() {
   const today = new Date();
   const dday = calculateDday(today, new Date(EXAM_DATE));
-  const plan = generateStudyPlan(today, new Date(EXAM_DATE));
+  const todayKey = toKstDateKey(today);
+  const plan = generateFixedExamPlan();
 
   return (
     <div className="space-y-8">
@@ -22,9 +23,11 @@ export function PlanPage() {
             title={
               <span className="flex flex-wrap items-center gap-2">
                 {item.date}
-                <Badge tone={item.dday <= 3 ? 'red' : item.dday <= 9 ? 'amber' : 'green'}>
+                <Badge tone={item.date === todayKey ? 'blue' : item.dday <= 3 ? 'red' : item.dday <= 9 ? 'amber' : 'green'}>
                   {item.dday === 0 ? 'D-Day' : `D-${item.dday}`}
                 </Badge>
+                {item.date < todayKey && <Badge>기록 확인</Badge>}
+                {item.date === todayKey && <Badge tone="blue">오늘</Badge>}
               </span>
             }
           >

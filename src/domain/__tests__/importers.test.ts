@@ -32,4 +32,57 @@ describe('parseJsonImport', () => {
     expect(result.questions).toHaveLength(0);
     expect(result.errors.length).toBeGreaterThan(0);
   });
+
+  it('originalIncluded true 문제 import를 막는다', () => {
+    const result = parseJsonImport(
+      JSON.stringify({
+        questions: [
+          {
+            id: 'origin-001',
+            title: '원문',
+            type: 'short-answer',
+            chapter: 'SQL 응용',
+            topic: 'DCL',
+            tags: ['SQL'],
+            priority: 'A',
+            trend2026Round1: false,
+            prompt: '원문',
+            answer: 'GRANT',
+            explanation: '설명',
+            sourceNote: '원문',
+            originalIncluded: true,
+          },
+        ],
+      }),
+    );
+    expect(result.questions).toHaveLength(0);
+    expect(result.errors.join('\n')).toContain('실제 기출 원문');
+  });
+
+  it('code-output 문제에 trace가 없으면 import를 막는다', () => {
+    const result = parseJsonImport(
+      JSON.stringify({
+        questions: [
+          {
+            id: 'trace-001',
+            title: 'trace 없음',
+            type: 'code-output',
+            chapter: '10장 프로그래밍 언어 활용',
+            topic: 'C',
+            tags: ['C'],
+            priority: 'A',
+            trend2026Round1: true,
+            language: 'C',
+            prompt: '출력은?',
+            code: 'printf("A");',
+            answer: 'A',
+            explanation: 'A 출력',
+            sourceNote: '샘플',
+          },
+        ],
+      }),
+    );
+    expect(result.questions).toHaveLength(0);
+    expect(result.errors.join('\n')).toContain('trace');
+  });
 });

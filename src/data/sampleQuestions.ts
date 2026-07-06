@@ -1,10 +1,11 @@
 import type { Question } from '../domain/question';
 import { chapterMap } from './chapterMap';
+import { generatedSampleQuestions } from './generatedSampleQuestions';
 
 const now = '2026-02-23T00:00:00.000Z';
 const sourceNote = '샘플 변형 문제(원문 아님)';
 
-export const sampleQuestions: Question[] = [
+const baseSampleQuestions: Question[] = [
   {
     id: 'sample-c-001',
     title: 'C 배열과 반복문 출력',
@@ -625,4 +626,27 @@ export const sampleQuestions: Question[] = [
     createdAt: now,
     updatedAt: now,
   },
+];
+
+function signalIdsFor(question: Question) {
+  if (question.language === 'C') return ['signal-code-output-heavy'];
+  if (question.language === 'Java') return ['signal-java-binding-string-static'];
+  if (question.language === 'Python') return ['signal-python-sequence-copy'];
+  if (question.language === 'SQL' || question.chapter.includes('SQL')) return ['signal-sql-aggregation-join'];
+  if (question.chapter.includes('데이터베이스')) return ['signal-db-design-transaction'];
+  if (question.chapter.includes('보안')) return ['signal-security-network-core'];
+  return ['signal-testing-pattern-engineering'];
+}
+
+export const sampleQuestions: Question[] = [
+  ...baseSampleQuestions.map((question, index): Question => ({
+    ...question,
+    sourceYear: question.sourceYear ?? [2023, 2024, 2025, 2026][index % 4],
+    sourceRound: question.sourceRound ?? String((index % 3) + 1),
+    sourceKind: question.sourceKind ?? (question.trend2026Round1 ? 'restored' : 'publisher'),
+    sourceConfidence: question.sourceConfidence ?? (question.trend2026Round1 ? 'medium' : 'high'),
+    derivedFromTrendSignalIds: question.derivedFromTrendSignalIds ?? signalIdsFor(question),
+    originalIncluded: false,
+  })),
+  ...generatedSampleQuestions,
 ];

@@ -1,5 +1,6 @@
 import type { MockExamResult, Question } from './question';
 import { gradeQuestion } from './scoring';
+import { pickTrendWeightedQuestions } from './trendWeightedPicker';
 
 export function getExamStatus(score: number): MockExamResult['status'] {
   if (score >= 60) return '합격권';
@@ -9,23 +10,9 @@ export function getExamStatus(score: number): MockExamResult['status'] {
 
 export function generateMockQuestions(
   questions: Question[],
-  options: { trend2026Round1?: boolean; count?: number; random?: () => number } = {},
+  options: { trend2026Round1?: boolean; recentThreeYears?: boolean; count?: number; random?: () => number } = {},
 ) {
-  const count = options.count ?? 20;
-  const random = options.random ?? Math.random;
-  const pool = options.trend2026Round1 ? questions.filter((question) => question.trend2026Round1) : questions;
-  const shuffled = [...pool].sort(() => random() - 0.5);
-
-  if (!options.trend2026Round1) {
-    return shuffled.slice(0, count);
-  }
-
-  const codeQuestions = shuffled.filter((question) => question.type === 'code-output');
-  const selected = codeQuestions.slice(0, Math.min(7, codeQuestions.length));
-  const selectedIds = new Set(selected.map((question) => question.id));
-  const rest = shuffled.filter((question) => !selectedIds.has(question.id));
-
-  return [...selected, ...rest].slice(0, count);
+  return pickTrendWeightedQuestions(questions, options);
 }
 
 export function gradeMockExam(

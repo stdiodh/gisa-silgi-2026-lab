@@ -1,7 +1,9 @@
-import { CalendarClock, CheckCircle2, Flame, NotebookTabs, Target } from 'lucide-react';
+import { CalendarClock, CheckCircle2, Code2, Database, Flame, NotebookTabs, Target } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { SevenDayChart } from '../components/dashboard/SevenDayChart';
 import { Badge } from '../components/ui/Badge';
+import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { getDashboardStats, seedSampleQuestions } from '../db/repository';
 import { calculateDday, EXAM_DATE } from '../domain/studyPlan';
@@ -45,15 +47,62 @@ export function DashboardPage() {
             시험일 {EXAM_DATE} · {dday > 0 ? `D-${dday}` : dday === 0 ? 'D-Day' : `D+${Math.abs(dday)}`}
           </p>
         </div>
-        <Badge tone="blue">샘플 문제 {stats.totalQuestions}개</Badge>
+        <div className="flex flex-wrap gap-2">
+          <Badge tone="blue">샘플 문제 {stats.totalQuestions}개</Badge>
+          <Badge tone={stats.dailyMission.completedAt ? 'green' : 'amber'}>
+            {stats.dailyMission.completedAt ? '오늘 미션 완료' : '오늘 미션 대기'}
+          </Badge>
+        </div>
       </div>
+
+      <Card
+        title="오늘 반드시 풀어야 할 문제"
+        action={
+          <Link to="/daily">
+            <Button variant="primary">Daily Mission 시작</Button>
+          </Link>
+        }
+      >
+        <div className="grid gap-3 sm:grid-cols-5">
+          <div className="rounded-xl bg-surface-muted p-4 dark:bg-slate-800">
+            <p className="text-xs font-bold text-ink-muted dark:text-slate-400">오늘 푼 문제</p>
+            <p className="mt-2 text-2xl font-bold">{stats.todaySolved}</p>
+          </div>
+          <div className="rounded-xl bg-surface-muted p-4 dark:bg-slate-800">
+            <p className="text-xs font-bold text-ink-muted dark:text-slate-400">복습 예정</p>
+            <p className="mt-2 text-2xl font-bold">{stats.dueReviewCount}</p>
+          </div>
+          <div className="rounded-xl bg-surface-muted p-4 dark:bg-slate-800">
+            <p className="text-xs font-bold text-ink-muted dark:text-slate-400">최근 3년 진척</p>
+            <p className="mt-2 text-2xl font-bold">{stats.recentProgress}%</p>
+          </div>
+          <div className="rounded-xl bg-surface-muted p-4 dark:bg-slate-800">
+            <p className="text-xs font-bold text-ink-muted dark:text-slate-400">코드 정확도</p>
+            <p className="mt-2 text-2xl font-bold">{stats.codeAccuracy}%</p>
+          </div>
+          <div className="rounded-xl bg-surface-muted p-4 dark:bg-slate-800">
+            <p className="text-xs font-bold text-ink-muted dark:text-slate-400">SQL 정확도</p>
+            <p className="mt-2 text-2xl font-bold">{stats.sqlAccuracy}%</p>
+          </div>
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div className="flex items-center gap-3 rounded-xl bg-surface-muted p-4 dark:bg-slate-800">
+            <Code2 className="h-5 w-5 text-brand-secondary" />
+            <span className="text-sm">오답 해결률 {stats.wrongResolvedRate}%</span>
+          </div>
+          <div className="flex items-center gap-3 rounded-xl bg-surface-muted p-4 dark:bg-slate-800">
+            <Database className="h-5 w-5 text-brand-secondary" />
+            <span className="text-sm">누적 오답 {stats.wrongCount}개</span>
+          </div>
+        </div>
+      </Card>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard label="D-day" value={dday > 0 ? `D-${dday}` : dday === 0 ? 'D-Day' : `D+${Math.abs(dday)}`} icon={CalendarClock} />
-        <StatCard label="오늘 푼 문제" value={stats.todaySolved} icon={CheckCircle2} />
-        <StatCard label="오늘 복습할 오답" value={stats.dueReviewCount} icon={NotebookTabs} />
+        <StatCard label="오늘 미션" value={stats.dailyMission.completedAt ? '완료' : '시작'} icon={CheckCircle2} />
+        <StatCard label="streak" value={stats.streak} icon={Flame} />
+        <StatCard label="남은 학습 세션" value={stats.remainingSessions} icon={NotebookTabs} />
         <StatCard label="2026 1회 진척도" value={`${stats.trendProgress}%`} icon={Target} />
-        <StatCard label="누적 오답" value={stats.wrongCount} icon={Flame} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.6fr)]">

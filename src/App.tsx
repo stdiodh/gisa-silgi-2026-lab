@@ -2,10 +2,12 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { AppShell } from './components/layout/AppShell';
 import { useTheme } from './hooks/useTheme';
 import { DashboardPage } from './routes/DashboardPage';
+import { DailyPage } from './routes/DailyPage';
 import { ImportPage } from './routes/ImportPage';
 import { MockPage } from './routes/MockPage';
 import { PlanPage } from './routes/PlanPage';
 import { QuestionsPage } from './routes/QuestionsPage';
+import { RecentThreeYearsPage } from './routes/RecentThreeYearsPage';
 import { QuizPage } from './routes/QuizPage';
 import { ReviewPage } from './routes/ReviewPage';
 import { SettingsPage } from './routes/SettingsPage';
@@ -21,10 +23,12 @@ export default function App() {
       <AppShell darkMode={darkMode} onDarkModeChange={setDarkMode}>
         <Routes>
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/daily" element={<DailyPage />} />
           <Route path="/study" element={<StudyPage />} />
           <Route path="/questions" element={<QuestionsPage />} />
           <Route path="/quiz" element={<QuizPage />} />
           <Route path="/trend-2026-1" element={<TrendPage />} />
+          <Route path="/recent-3-years" element={<RecentThreeYearsPage />} />
           <Route path="/mock" element={<MockPage />} />
           <Route path="/wrong" element={<WrongPage />} />
           <Route path="/review" element={<ReviewPage />} />

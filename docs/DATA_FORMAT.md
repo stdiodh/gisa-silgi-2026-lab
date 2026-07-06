@@ -51,6 +51,7 @@
 - `answer`
 - `explanation`
 - `sourceNote`
+- `originalIncluded`: 기본 앱 데이터와 공개 저장소에서는 항상 `false`
 
 ## 선택 필드
 
@@ -60,8 +61,17 @@
 - `aliases`
 - `trace`
 - `tableAnswer`
+- `sourceYear`
+- `sourceRound`
+- `sourceKind`: `official`, `publisher`, `restored`, `review`, `user-local`
+- `sourceConfidence`: `high`, `medium`, `low`
+- `derivedFromTrendSignalIds`
 - `createdAt`
 - `updatedAt`
+
+`originalIncluded`가 `true`인 데이터는 기본 import에서 거부됩니다. 공개 저장소/앱 기본 데이터에는 실제 기출 원문, 교재 원문, 복원 문제 원문을 포함할 수 없습니다.
+
+`code-output` 문제는 `trace`가 최소 2단계 이상 필요합니다.
 
 ## CSV
 

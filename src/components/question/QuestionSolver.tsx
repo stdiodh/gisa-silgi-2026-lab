@@ -1,9 +1,9 @@
 import { BookmarkPlus, Check, ChevronRight, RotateCcw } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { applyReviewRating, markWeak, saveAttempt } from '../../db/repository';
+import { applyReviewRating, markWeak, recordWrongAnalysis, saveAttempt, saveUserTraceSteps } from '../../db/repository';
 import type { GradeResult } from '../../domain/scoring';
 import { gradeQuestion } from '../../domain/scoring';
-import type { Question, ReviewRating, StudyMode, WrongReason } from '../../domain/question';
+import type { Question, ReviewRating, StudyMode, UserTraceStep, WrongPattern, WrongReason } from '../../domain/question';
 import { useLocalSetting } from '../../hooks/useLocalSetting';
 import { difficultyLabels } from '../../utils/questionLabels';
 import { Badge } from '../ui/Badge';
@@ -11,6 +11,7 @@ import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Select, TextArea } from '../ui/Field';
 import { QuestionMeta } from './QuestionMeta';
+import { TracePad } from './TracePad';
 import { TraceTable } from './TraceTable';
 
 interface QuestionSolverProps {
@@ -22,10 +23,37 @@ interface QuestionSolverProps {
 }
 
 const wrongReasons: WrongReason[] = ['몰랐음', '헷갈림', '실수', '암기 부족', '시간 부족'];
+const wrongPatterns: WrongPattern[] = [
+  '출력 형식 실수',
+  '변수 추적 누락',
+  '포인터/참조 오해',
+  'Java 동적 바인딩 오해',
+  'Python 얕은 복사 오해',
+  'SQL GROUP BY/HAVING 오해',
+  '용어 혼동',
+  '암기 부족',
+];
 
 function isTypingTarget(target: EventTarget | null) {
   const element = target as HTMLElement | null;
   return element?.tagName === 'INPUT' || element?.tagName === 'TEXTAREA' || element?.tagName === 'SELECT';
+}
+
+function inferWrongPattern(question: Question, fallback: WrongPattern): WrongPattern {
+  if (question.language === 'C' && question.tags.some((tag) => tag.includes('포인터') || tag.includes('참조'))) {
+    return '포인터/참조 오해';
+  }
+  if (question.language === 'Java' && question.tags.some((tag) => tag.includes('상속') || tag.includes('오버라이딩'))) {
+    return 'Java 동적 바인딩 오해';
+  }
+  if (question.language === 'Python' && question.tags.some((tag) => tag.includes('얕은') || tag.includes('copy'))) {
+    return 'Python 얕은 복사 오해';
+  }
+  if (question.language === 'SQL' && question.tags.some((tag) => tag.includes('GROUP') || tag.includes('HAVING'))) {
+    return 'SQL GROUP BY/HAVING 오해';
+  }
+  if (question.type === 'code-output') return '변수 추적 누락';
+  return fallback;
 }
 
 export function QuestionSolver({ questions, mode, title = '문제 풀이', strictCodeOutput = false, onAnswered }: QuestionSolverProps) {
@@ -34,9 +62,12 @@ export function QuestionSolver({ questions, mode, title = '문제 풀이', stric
   const [result, setResult] = useState<GradeResult | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [wrongReason, setWrongReason] = useState<WrongReason>('헷갈림');
+  const [wrongPattern, setWrongPattern] = useState<WrongPattern>('변수 추적 누락');
   const [note, setNote] = useState('');
   const [reviewMessage, setReviewMessage] = useState('');
   const [strictMode, setStrictMode] = useLocalSetting('gisa-lab-strict-code-output', strictCodeOutput);
+  const [traceSteps, setTraceSteps] = useState<UserTraceStep[]>([]);
+  const [outputBuffer, setOutputBuffer] = useState('');
 
   const question = questions[index];
   const progress = useMemo(() => `${Math.min(index + 1, questions.length)} / ${questions.length}`, [index, questions.length]);
@@ -46,6 +77,8 @@ export function QuestionSolver({ questions, mode, title = '문제 풀이', stric
     setAnswer('');
     setResult(null);
     setShowAnswer(false);
+    setTraceSteps([]);
+    setOutputBuffer('');
   }, [questions]);
 
   const resetForNext = (nextIndex: number) => {
@@ -55,6 +88,8 @@ export function QuestionSolver({ questions, mode, title = '문제 풀이', stric
     setShowAnswer(false);
     setNote('');
     setReviewMessage('');
+    setTraceSteps([]);
+    setOutputBuffer('');
   };
 
   const handleNext = () => {
@@ -65,19 +100,36 @@ export function QuestionSolver({ questions, mode, title = '문제 풀이', stric
   const handleCheck = async () => {
     if (!question) return;
     const grade = gradeQuestion(question, answer, { strictCodeOutput: strictMode });
+    const isTraceQuestion = question.type === 'code-output' || question.type === 'sql-result';
+    const nextWrongReason: WrongReason = !grade.isCorrect && isTraceQuestion ? '실수' : wrongReason;
+    const nextWrongPattern: WrongPattern = inferWrongPattern(question, wrongPattern);
     setResult(grade);
     setShowAnswer(true);
-    await saveAttempt({
+    if (!grade.isCorrect && isTraceQuestion) {
+      setWrongReason(nextWrongReason);
+      setWrongPattern(nextWrongPattern);
+    }
+    const attemptId = await saveAttempt({
       questionId: question.id,
       submittedAnswer: answer,
       isCorrect: grade.isCorrect,
       mode,
       answeredAt: new Date().toISOString(),
-      wrongReason: grade.isCorrect ? undefined : wrongReason,
+      wrongReason: grade.isCorrect ? undefined : nextWrongReason,
+      wrongPattern: grade.isCorrect ? undefined : nextWrongPattern,
       note: grade.isCorrect ? undefined : note,
     });
+    await saveUserTraceSteps(
+      traceSteps.map((step, stepIndex) => ({
+        ...step,
+        questionId: question.id,
+        attemptId,
+        step: stepIndex + 1,
+      })),
+    );
     if (!grade.isCorrect) {
       await markWeak(question.id);
+      await recordWrongAnalysis(question.id, nextWrongReason, nextWrongPattern);
     }
     onAnswered?.();
   };
@@ -91,9 +143,11 @@ export function QuestionSolver({ questions, mode, title = '문제 풀이', stric
       mode,
       answeredAt: new Date().toISOString(),
       wrongReason,
+      wrongPattern,
       note,
     });
     await markWeak(question.id);
+    await recordWrongAnalysis(question.id, wrongReason, wrongPattern);
     setReviewMessage('오답노트에 추가했습니다.');
     onAnswered?.();
   };
@@ -134,6 +188,8 @@ export function QuestionSolver({ questions, mode, title = '문제 풀이', stric
       </Card>
     );
   }
+
+  const isTraceQuestion = question.type === 'code-output' || question.type === 'sql-result';
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
@@ -186,13 +242,22 @@ export function QuestionSolver({ questions, mode, title = '문제 풀이', stric
               ))}
             </div>
           ) : null}
+          {isTraceQuestion && (
+            <TracePad
+              questionId={question.id}
+              steps={traceSteps}
+              outputBuffer={outputBuffer}
+              onChange={setTraceSteps}
+              onOutputBufferChange={setOutputBuffer}
+            />
+          )}
         </div>
       </Card>
 
       <Card title="답안 / 해설">
         <div className="space-y-5">
           <TextArea
-            placeholder="출력값 또는 답안을 입력하세요."
+            placeholder={isTraceQuestion ? '손으로 먼저 추적한 뒤 최종 출력값을 입력하세요.' : '답안을 입력하세요.'}
             value={answer}
             onChange={(event) => setAnswer(event.target.value)}
           />
@@ -227,8 +292,15 @@ export function QuestionSolver({ questions, mode, title = '문제 풀이', stric
                 </option>
               ))}
             </Select>
+            <Select value={wrongPattern} onChange={(event) => setWrongPattern(event.target.value as WrongPattern)}>
+              {wrongPatterns.map((pattern) => (
+                <option key={pattern} value={pattern}>
+                  {pattern}
+                </option>
+              ))}
+            </Select>
             <TextArea
-              className="min-h-10 sm:col-span-1"
+              className="min-h-10 sm:col-span-2"
               placeholder="오답 메모"
               value={note}
               onChange={(event) => setNote(event.target.value)}
@@ -259,7 +331,26 @@ export function QuestionSolver({ questions, mode, title = '문제 풀이', stric
                 <p className="text-xs font-bold text-ink-muted dark:text-slate-400">해설</p>
                 <p className="mt-2 text-sm leading-6">{question.explanation}</p>
               </div>
-              <TraceTable trace={question.trace} />
+              {isTraceQuestion && (
+                <div className="grid gap-4 xl:grid-cols-2">
+                  <div>
+                    <p className="mb-2 text-xs font-bold text-ink-muted dark:text-slate-400">내 trace</p>
+                    <TraceTable
+                      trace={traceSteps.map((step) => ({
+                        step: step.step,
+                        line: step.line ?? '',
+                        variableChanges: step.variableSnapshot,
+                        outputSoFar: step.outputSoFar,
+                        note: step.note,
+                      }))}
+                    />
+                  </div>
+                  <div>
+                    <p className="mb-2 text-xs font-bold text-ink-muted dark:text-slate-400">해설 trace</p>
+                    <TraceTable trace={question.trace} />
+                  </div>
+                </div>
+              )}
               <div>
                 <p className="mb-2 text-xs font-bold text-ink-muted dark:text-slate-400">간격 반복 난이도</p>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

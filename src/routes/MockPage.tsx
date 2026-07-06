@@ -12,7 +12,7 @@ import { useQuestions } from '../hooks/useRepositoryData';
 
 export function MockPage() {
   const { questions, loading } = useQuestions();
-  const [trend, setTrend] = useState(true);
+  const [mode, setMode] = useState<'trend' | 'recent' | 'normal'>('trend');
   const [limitMinutes, setLimitMinutes] = useState(30);
   const [examQuestions, setExamQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -23,10 +23,15 @@ export function MockPage() {
     () => examQuestions.filter((question) => question.type === 'code-output').length,
     [examQuestions],
   );
+  const sqlCount = useMemo(
+    () => examQuestions.filter((question) => question.language === 'SQL' || question.type === 'sql-result').length,
+    [examQuestions],
+  );
 
   const handleStart = () => {
     const generated = generateMockQuestions(questions, {
-      trend2026Round1: trend,
+      trend2026Round1: mode === 'trend',
+      recentThreeYears: mode === 'recent',
       count: 20,
       random: () => 0.42,
     });
@@ -38,7 +43,7 @@ export function MockPage() {
 
   const handleSubmit = async () => {
     if (!startedAt) return;
-    const graded = gradeMockExam(examQuestions, answers, trend, startedAt, new Date());
+    const graded = gradeMockExam(examQuestions, answers, mode === 'trend', startedAt, new Date());
     setResult(graded);
     await saveMockResult(graded);
   };
@@ -54,8 +59,9 @@ export function MockPage() {
 
       <Card title="모의고사 설정">
         <div className="grid gap-3 sm:grid-cols-3">
-          <Select value={trend ? 'trend' : 'normal'} onChange={(event) => setTrend(event.target.value === 'trend')}>
+          <Select value={mode} onChange={(event) => setMode(event.target.value as 'trend' | 'recent' | 'normal')}>
             <option value="trend">2026 1회 경향 모의고사</option>
+            <option value="recent">최근 3년+최신 모의고사</option>
             <option value="normal">일반 모의고사</option>
           </Select>
           <label className="relative">
@@ -74,7 +80,7 @@ export function MockPage() {
         </div>
         {examQuestions.length > 0 && (
           <p className="mt-3 text-sm text-ink-muted dark:text-slate-400">
-            제한 시간 {limitMinutes}분 · 코드 출력 {codeCount}문항
+            제한 시간 {limitMinutes}분 · 코드 출력 {codeCount}문항 · SQL {sqlCount}문항
           </p>
         )}
       </Card>

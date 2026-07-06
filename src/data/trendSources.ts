@@ -1,0 +1,51 @@
+import type { TrendSource } from '../domain/trend';
+
+export const trendSources: TrendSource[] = [
+  {
+    id: 'official-2026-criteria',
+    kind: 'official',
+    title: '2026 정보처리기사 실기 출제기준 확인용 메타데이터',
+    year: 2026,
+    checkedAt: '2026-07-06',
+    confidence: 'high',
+    note: '공식 출제기준/시험 정보는 원문을 포함하지 않고 범주 메타데이터로만 사용한다.',
+  },
+  {
+    id: 'publisher-2025-public-materials',
+    kind: 'publisher',
+    title: '출판사 공개 학습자료 패턴 메타데이터',
+    year: 2025,
+    checkedAt: '2026-07-06',
+    confidence: 'medium',
+    note: '출판사 자료실의 공개 학습 범주를 참고하되 원문 문항은 포함하지 않는다.',
+  },
+  {
+    id: 'restored-2026-round1-patterns',
+    kind: 'restored',
+    title: '2026년 1회 복원/후기 경향 패턴',
+    year: 2026,
+    round: 1,
+    checkedAt: '2026-07-06',
+    confidence: 'medium',
+    note: '복원/후기 기반이므로 공식 확정 기출로 표시하지 않는다.',
+  },
+  {
+    id: 'review-2026-round1-code-heavy',
+    kind: 'review',
+    title: '2026년 1회 후기 기반 코드 출력 강화 신호',
+    year: 2026,
+    round: 1,
+    checkedAt: '2026-07-06',
+    confidence: 'low',
+    note: '개인 후기 기반 신호는 변형 문제 가중치에만 낮은 신뢰도로 반영한다.',
+  },
+  {
+    id: 'user-local-import',
+    kind: 'user-local',
+    title: '사용자 로컬 import 자료',
+    year: 2026,
+    checkedAt: '2026-07-06',
+    confidence: 'medium',
+    note: '사용자가 직접 가진 자료를 로컬 IndexedDB에 import할 때만 사용한다.',
+  },
+];

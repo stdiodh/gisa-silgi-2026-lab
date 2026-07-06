@@ -1,4 +1,6 @@
 import type { Question, QuestionLanguage, QuestionPriority, QuestionType } from './question';
+import { trendSignalIds } from '../data/trendSignals';
+import type { SourceConfidence, SourceKind } from './trend';
 
 export interface ImportResult {
   questions: Question[];
@@ -16,6 +18,8 @@ const questionTypes: QuestionType[] = [
 ];
 const priorities: QuestionPriority[] = ['A', 'B', 'C'];
 const languages: QuestionLanguage[] = ['C', 'Java', 'Python', 'SQL'];
+const sourceKinds: SourceKind[] = ['official', 'publisher', 'restored', 'review', 'user-local'];
+const confidences: SourceConfidence[] = ['high', 'medium', 'low'];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -34,6 +38,18 @@ function toStringArray(value: unknown) {
   }
 
   return [];
+}
+
+function toBoolean(value: unknown) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') return value.trim().toLowerCase() === 'true';
+  return Boolean(value);
+}
+
+function toNumber(value: unknown) {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string' && value.trim()) return Number(value);
+  return undefined;
 }
 
 export function validateQuestion(candidate: unknown): { question?: Question; errors: string[] } {
@@ -67,6 +83,31 @@ export function validateQuestion(candidate: unknown): { question?: Question; err
     errors.push(`${String(candidate.id ?? 'unknown')}: tags가 비어 있습니다.`);
   }
 
+  if (toBoolean(candidate.originalIncluded)) {
+    errors.push(
+      `${String(candidate.id ?? 'unknown')}: 공개 저장소/앱 기본 데이터에는 실제 기출 원문을 포함할 수 없습니다. 개인 로컬 학습용으로만 사용하려면 private import 영역에 별도 저장하세요.`,
+    );
+  }
+
+  if (candidate.sourceKind && !sourceKinds.includes(candidate.sourceKind as SourceKind)) {
+    errors.push(`${String(candidate.id ?? 'unknown')}: sourceKind 값이 올바르지 않습니다.`);
+  }
+
+  if (candidate.sourceConfidence && !confidences.includes(candidate.sourceConfidence as SourceConfidence)) {
+    errors.push(`${String(candidate.id ?? 'unknown')}: sourceConfidence 값이 올바르지 않습니다.`);
+  }
+
+  const derivedFromTrendSignalIds = toStringArray(candidate.derivedFromTrendSignalIds);
+  for (const signalId of derivedFromTrendSignalIds) {
+    if (!trendSignalIds.has(signalId)) {
+      errors.push(`${String(candidate.id ?? 'unknown')}: 알 수 없는 trend signal id입니다. (${signalId})`);
+    }
+  }
+
+  if (candidate.type === 'code-output' && (!Array.isArray(candidate.trace) || candidate.trace.length < 2)) {
+    errors.push(`${String(candidate.id ?? 'unknown')}: code-output 문제는 trace가 최소 2단계 이상 필요합니다.`);
+  }
+
   if (errors.length > 0) {
     return { errors };
   }
@@ -91,6 +132,12 @@ export function validateQuestion(candidate: unknown): { question?: Question; err
     trace: Array.isArray(candidate.trace) ? (candidate.trace as Question['trace']) : undefined,
     tableAnswer: isRecord(candidate.tableAnswer) ? (candidate.tableAnswer as unknown as Question['tableAnswer']) : undefined,
     sourceNote: String(candidate.sourceNote),
+    sourceYear: toNumber(candidate.sourceYear),
+    sourceRound: typeof candidate.sourceRound === 'string' ? candidate.sourceRound : undefined,
+    sourceKind: candidate.sourceKind as SourceKind | undefined,
+    sourceConfidence: candidate.sourceConfidence as SourceConfidence | undefined,
+    derivedFromTrendSignalIds,
+    originalIncluded: false,
     createdAt: typeof candidate.createdAt === 'string' ? candidate.createdAt : now,
     updatedAt: typeof candidate.updatedAt === 'string' ? candidate.updatedAt : now,
   };

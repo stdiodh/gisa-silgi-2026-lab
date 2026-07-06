@@ -2,6 +2,7 @@ import {
   BarChart3,
   BookOpen,
   CalendarDays,
+  CheckCircle2,
   Database,
   FileUp,
   GraduationCap,
@@ -28,14 +29,16 @@ interface AppShellProps {
 
 const navItems = [
   { to: '/', label: '대시보드', icon: Home },
+  { to: '/daily', label: 'Daily', icon: CheckCircle2 },
   { to: '/study', label: '오늘 학습', icon: GraduationCap },
   { to: '/questions', label: '문제은행', icon: BookOpen },
   { to: '/quiz', label: '퀴즈', icon: Sparkles },
   { to: '/trend-2026-1', label: '2026 1회', icon: BarChart3 },
+  { to: '/recent-3-years', label: '최근 3년', icon: Database },
   { to: '/mock', label: '모의고사', icon: TimerReset },
   { to: '/wrong', label: '오답노트', icon: NotebookPen },
   { to: '/review', label: '복습', icon: CalendarDays },
-  { to: '/plan', label: '플랜', icon: Database },
+  { to: '/plan', label: '플랜', icon: CalendarDays },
   { to: '/import', label: 'Import', icon: FileUp },
   { to: '/settings', label: '설정', icon: Settings },
 ];
