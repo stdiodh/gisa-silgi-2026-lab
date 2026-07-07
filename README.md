@@ -14,6 +14,8 @@ npm run dev
 검증:
 
 ```bash
+npm run coverage:scope
+npm run validate:data
 npm run test
 npm run build
 ```
@@ -29,6 +31,18 @@ npm run build
 - 오답노트와 간격 반복: SM-2 스타일 nextReviewAt 계산
 - 모의고사: 20문항, 100점 만점, 경향 모의고사는 코드 출력 최소 7문항
 - 데이터 import/export: JSON, CSV, Markdown import와 JSON export
+
+## 2026 실기 2회 전 범위 학습팩
+
+PR #1의 `round2TargetQuestions`는 코드, SQL, 보안 중심의 검수 변형 문제팩입니다. 후속 `round2ScopeGapQuestions`는 요구사항 확인, 화면 설계, 통합 구현/인터페이스, 서버 프로그램 구현, 제품 소프트웨어 패키징 영역을 보강해 2026년 7월 19일 실기 2회 전 범위를 맞춥니다.
+
+coverage report는 Q-Net 원문을 저장하지 않고 문제 데이터의 `chapter`, `topic`, `tags`만 대조합니다.
+
+```bash
+npm run coverage:scope
+```
+
+결과는 [docs/QNET_SCOPE_CHECKLIST.md](docs/QNET_SCOPE_CHECKLIST.md)에 자동 반영됩니다.
 
 ## GitHub Pages
 
@@ -49,6 +63,8 @@ npm run build
 ## 데이터 import
 
 사용자가 로컬에 가진 JSON/CSV/Markdown 파일을 `/import` 페이지에서 직접 불러옵니다. 브라우저 File API로만 읽고 서버로 전송하지 않습니다.
+
+외부 사이트 자동 수집은 구현하지 않습니다. 정처기 감자, Q-Net, 교재, PDF, 복원 문제 원문은 공개 저장소에 저장하지 않고, 개인 학습 목적으로 직접 정리한 자료만 IndexedDB private import로 저장합니다. Export 파일에는 private import 문제가 포함될 수 있으므로 공개 공유 전에 반드시 확인해야 합니다.
 
 자세한 형식은 [docs/DATA_FORMAT.md](docs/DATA_FORMAT.md)를 참고하세요.
 
