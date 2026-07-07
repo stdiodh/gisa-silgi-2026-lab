@@ -1,6 +1,7 @@
 import type { Question } from '../domain/question';
 import { chapterMap } from './chapterMap';
 import { generatedSampleQuestions } from './generatedSampleQuestions';
+import { round2TargetQuestions } from './round2TargetQuestions';
 
 const now = '2026-02-23T00:00:00.000Z';
 const sourceNote = '샘플 변형 문제(원문 아님)';
@@ -649,4 +650,5 @@ export const sampleQuestions: Question[] = [
     originalIncluded: false,
   })),
   ...generatedSampleQuestions,
+  ...round2TargetQuestions,
 ];

@@ -69,6 +69,38 @@ function hasTraceWork(steps: UserTraceStep[], outputBuffer: string) {
   );
 }
 
+function parseExplanation(explanation: string) {
+  const markers = [...explanation.matchAll(/(풀이\s*포인트|키워드)\s*:/g)];
+  if (!markers.length) {
+    return { intro: '', point: explanation.trim(), keywords: '' };
+  }
+
+  const sections = { intro: explanation.slice(0, markers[0].index).trim(), point: '', keywords: '' };
+  markers.forEach((marker, index) => {
+    const label = marker[1].replace(/\s/g, '');
+    const start = (marker.index ?? 0) + marker[0].length;
+    const end = markers[index + 1]?.index ?? explanation.length;
+    const value = explanation.slice(start, end).trim();
+    if (label === '풀이포인트') sections.point = [sections.point, value].filter(Boolean).join(' ');
+    if (label === '키워드') sections.keywords = [sections.keywords, value].filter(Boolean).join(' ');
+  });
+
+  return {
+    ...sections,
+    point: sections.point || sections.intro || explanation.trim(),
+  };
+}
+
+function nextChecksFor(question: Question) {
+  if (question.type === 'code-output') return ['변수 변경 순서', '인덱스/포인터 이동 기준', '최종 출력 형식'];
+  if (question.type === 'sql-result' || question.language === 'SQL') return ['JOIN 조건', 'GROUP BY/HAVING 순서', 'NULL과 정렬 조건'];
+  if (question.type === 'term-matching' || question.type === 'keyword-check') {
+    return ['정의가 쓰이는 상황', '혼동되는 반대 개념', '답안 표기 alias'];
+  }
+  if (question.type === 'multiple-choice') return ['보기의 핵심 단어', '예외 조건', '오답 보기 제거 근거'];
+  return ['요구하는 산출물', '조건 키워드', '답안 표기 형식'];
+}
+
 export function QuestionSolver({ questions, mode, title = '문제 풀이', strictCodeOutput = false, onAnswered }: QuestionSolverProps) {
   const [index, setIndex] = useState(0);
   const [answer, setAnswer] = useState('');
@@ -217,6 +249,9 @@ export function QuestionSolver({ questions, mode, title = '문제 풀이', stric
   }
 
   const isTraceQuestion = question.type === 'code-output' || question.type === 'sql-result';
+  const explanation = parseExplanation(question.explanation);
+  const nextChecks = nextChecksFor(question);
+  const isTermQuestion = question.type === 'term-matching' || question.type === 'keyword-check';
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
@@ -326,12 +361,17 @@ export function QuestionSolver({ questions, mode, title = '문제 풀이', stric
                 </option>
               ))}
             </Select>
-            <TextArea
-              className="min-h-10 sm:col-span-2"
-              placeholder="오답 메모"
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-            />
+            <label className="sm:col-span-2">
+              <span className="mb-1 block text-xs font-bold text-ink-muted dark:text-slate-400">
+                {isTraceQuestion ? '내가 틀린 추적 지점' : '오답 메모'}
+              </span>
+              <TextArea
+                className="min-h-10"
+                placeholder={isTraceQuestion ? '예: i 증가 후 출력 순서를 놓침' : '오답 메모'}
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+              />
+            </label>
           </div>
 
           {result && (
@@ -348,21 +388,52 @@ export function QuestionSolver({ questions, mode, title = '문제 풀이', stric
 
           {showAnswer && (
             <div className="space-y-3">
-              <div>
-                <p className="text-xs font-bold text-ink-muted dark:text-slate-400">내 답</p>
-                <pre className="mt-2 whitespace-pre-wrap rounded-xl bg-surface-muted p-4 text-sm dark:bg-slate-800">
-                  {answer || '(빈 답안)'}
-                </pre>
-              </div>
-              <div>
+              <div className="rounded-xl border border-line-subtle p-4 dark:border-slate-800">
                 <p className="text-xs font-bold text-ink-muted dark:text-slate-400">정답</p>
-                <pre className="mt-2 whitespace-pre-wrap rounded-xl bg-surface-muted p-4 text-sm dark:bg-slate-800">
-                  {question.answer}
-                </pre>
+                <div className="mt-2 grid gap-3 md:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-semibold text-ink-muted dark:text-slate-400">내 답</p>
+                    <pre className="mt-1 whitespace-pre-wrap rounded-xl bg-surface-muted p-4 text-sm dark:bg-slate-800">
+                      {answer || '(빈 답안)'}
+                    </pre>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-ink-muted dark:text-slate-400">정답</p>
+                    <pre className="mt-1 whitespace-pre-wrap rounded-xl bg-surface-muted p-4 text-sm dark:bg-slate-800">
+                      {question.answer}
+                    </pre>
+                    {question.aliases?.length ? (
+                      <p className="mt-2 text-xs text-ink-muted dark:text-slate-400">허용 답안: {question.aliases.join(', ')}</p>
+                    ) : null}
+                  </div>
+                </div>
               </div>
-              <div>
-                <p className="text-xs font-bold text-ink-muted dark:text-slate-400">해설</p>
-                <p className="mt-2 text-sm leading-6">{question.explanation}</p>
+              <div className="rounded-xl border border-line-subtle p-4 dark:border-slate-800">
+                <p className="text-xs font-bold text-ink-muted dark:text-slate-400">풀이 포인트</p>
+                {explanation.intro && <p className="mt-2 text-sm leading-6">{explanation.intro}</p>}
+                <p className="mt-2 text-sm leading-6">{explanation.point}</p>
+              </div>
+              <div className="rounded-xl border border-line-subtle p-4 dark:border-slate-800">
+                <p className="text-xs font-bold text-ink-muted dark:text-slate-400">중요 키워드</p>
+                {explanation.keywords && <p className="mt-2 text-sm leading-6">{explanation.keywords}</p>}
+                <div className="mt-3 flex flex-wrap gap-1">
+                  {question.tags.slice(0, 8).map((tag) => (
+                    <Badge key={tag}>{tag}</Badge>
+                  ))}
+                </div>
+                {isTermQuestion && (
+                  <p className="mt-3 text-sm leading-6 text-ink-muted dark:text-slate-400">
+                    어떤 상황에서 쓰는 용어인지: {explanation.point}
+                  </p>
+                )}
+              </div>
+              <div className="rounded-xl border border-line-subtle p-4 dark:border-slate-800">
+                <p className="text-xs font-bold text-ink-muted dark:text-slate-400">다음에 같은 유형을 풀 때 체크할 것</p>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6">
+                  {nextChecks.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
               </div>
               {isTraceQuestion && (
                 <div className="grid gap-4 xl:grid-cols-2">

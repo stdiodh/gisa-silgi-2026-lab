@@ -9,11 +9,12 @@ export type QuestionType =
 
 export type QuestionPriority = 'A' | 'B' | 'C';
 export type QuestionLanguage = 'C' | 'Java' | 'Python' | 'SQL';
+export type TraceValue = string | number | boolean | null | Array<string | number | boolean | null>;
 
 export interface TraceStep {
   step: number;
   line: string;
-  variableChanges: Record<string, string | number | boolean | null>;
+  variableChanges: Record<string, TraceValue>;
   outputSoFar: string;
   note: string;
 }
@@ -46,6 +47,7 @@ export interface Question {
   sourceRound?: string;
   sourceKind?: SourceKind;
   sourceConfidence?: SourceConfidence;
+  sourceUrl?: string;
   derivedFromTrendSignalIds?: string[];
   originalIncluded?: false;
   createdAt: string;
