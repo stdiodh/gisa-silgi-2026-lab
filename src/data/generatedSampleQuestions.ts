@@ -51,6 +51,14 @@ function common(spec: BaseSpec, index = 0) {
   };
 }
 
+function explanationFor(spec: BaseSpec) {
+  const trimmed = spec.explanation.trim();
+  const tagged = trimmed.includes('풀이 포인트:')
+    ? trimmed
+    : `풀이 포인트: ${trimmed} 키워드: ${spec.tags.slice(0, 3).join(', ') || spec.topic}.`;
+  return tagged.length >= 30 ? tagged : `${tagged} 조건과 답안을 함께 확인한다.`;
+}
+
 function makeCode(spec: CodeSpec, index: number): Question {
   return {
     id: spec.id,
@@ -63,7 +71,7 @@ function makeCode(spec: CodeSpec, index: number): Question {
     prompt: '다음 코드를 손으로 추적한 뒤 출력 결과를 쓰시오.',
     code: spec.code,
     answer: spec.answer,
-    explanation: spec.explanation,
+    explanation: explanationFor(spec),
     trace: [
       {
         step: 1,
@@ -96,7 +104,7 @@ function makeConcept(spec: ConceptSpec, index: number): Question {
     prompt: spec.prompt,
     choices: spec.choices,
     answer: spec.answer,
-    explanation: spec.explanation,
+    explanation: explanationFor(spec),
     ...common(spec, index),
   };
 }

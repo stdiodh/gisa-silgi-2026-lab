@@ -1,6 +1,8 @@
 import type { Question } from '../domain/question';
 import { chapterMap } from './chapterMap';
 import { generatedSampleQuestions } from './generatedSampleQuestions';
+import { round2ScopeGapQuestions } from './round2ScopeGapQuestions';
+import { round2TargetQuestions } from './round2TargetQuestions';
 
 const now = '2026-02-23T00:00:00.000Z';
 const sourceNote = '샘플 변형 문제(원문 아님)';
@@ -163,7 +165,7 @@ const baseSampleQuestions: Question[] = [
     prompt: '자식 객체 생성 시 출력되는 순서를 쓰시오.',
     code: 'class Base {\n  Base() { System.out.print("B"); }\n}\nclass Child extends Base {\n  Child() { System.out.print("C"); }\n}\npublic class Main {\n  public static void main(String[] args) {\n    new Child();\n  }\n}',
     answer: 'BC',
-    explanation: '자식 생성자 실행 전 부모 생성자가 먼저 호출된다.',
+    explanation: '풀이 포인트: 자식 생성자 실행 전 부모 생성자가 먼저 호출된다. 키워드: 생성자 호출 순서.',
     trace: [
       { step: 1, line: 'new Child()', variableChanges: { call: 'Base()' }, outputSoFar: 'B', note: '부모 생성자' },
       { step: 2, line: 'Child()', variableChanges: { call: 'Child()' }, outputSoFar: 'BC', note: '자식 생성자' },
@@ -649,4 +651,6 @@ export const sampleQuestions: Question[] = [
     originalIncluded: false,
   })),
   ...generatedSampleQuestions,
+  ...round2TargetQuestions,
+  ...round2ScopeGapQuestions,
 ];

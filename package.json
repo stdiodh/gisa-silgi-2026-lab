@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "coverage:scope": "tsx scripts/generate-coverage-report.ts",
     "validate:data": "tsx scripts/validate-sample-data.ts"
   },
   "dependencies": {

@@ -25,6 +25,9 @@ describe('parseJsonImport', () => {
     );
     expect(result.errors).toHaveLength(0);
     expect(result.questions).toHaveLength(1);
+    expect(result.questions[0].sourceKind).toBe('user-local');
+    expect(result.questions[0].sourceConfidence).toBe('medium');
+    expect(result.questions[0].originalIncluded).toBe(false);
   });
 
   it('필수 필드가 없으면 오류를 반환한다', () => {

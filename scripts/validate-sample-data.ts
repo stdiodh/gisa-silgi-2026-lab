@@ -1,6 +1,9 @@
 import { sampleQuestions } from '../src/data/sampleQuestions';
+import { round2ScopeGapQuestions } from '../src/data/round2ScopeGapQuestions';
+import { round2TargetQuestions } from '../src/data/round2TargetQuestions';
 import { trendSignalIds } from '../src/data/trendSignals';
 import { validateQuestion } from '../src/domain/importers';
+import { findScopeCoverageFailures } from '../src/domain/scopeCoverage';
 import { readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -29,6 +32,20 @@ for (const file of walkFiles(process.cwd())) {
 
 if (sampleQuestions.length < 30) {
   errors.push(`샘플 문제는 최소 30개여야 합니다. 현재 ${sampleQuestions.length}개입니다.`);
+}
+
+const seenIds = new Set<string>();
+for (const question of sampleQuestions) {
+  if (seenIds.has(question.id)) {
+    errors.push(`${question.id}: 중복 id입니다.`);
+  }
+  seenIds.add(question.id);
+}
+
+for (const question of [...round2TargetQuestions, ...round2ScopeGapQuestions]) {
+  if (!seenIds.has(question.id)) {
+    errors.push(`${question.id}: round2 문제팩이 sampleQuestions에 포함되지 않았습니다.`);
+  }
 }
 
 const counts = {
@@ -62,6 +79,12 @@ for (const question of sampleQuestions) {
   if (!question.explanation?.trim()) {
     errors.push(`${question.id}: explanation이 비어 있습니다.`);
   }
+  if (!question.explanation.includes('풀이 포인트:')) {
+    warnings.push(`${question.id}: explanation에 "풀이 포인트:" 표식이 없습니다.`);
+  }
+  if (question.priority === 'A' && question.explanation.trim().length < 30) {
+    errors.push(`${question.id}: priority A 문제의 explanation은 30자 이상이어야 합니다.`);
+  }
   if (question.type === 'code-output' && (!question.trace || question.trace.length < 2)) {
     errors.push(`${question.id}: code-output 문제는 trace가 최소 2단계 이상 필요합니다.`);
   }
@@ -71,6 +94,15 @@ for (const question of sampleQuestions) {
   if (question.sourceConfidence === 'low' && question.priority === 'A') {
     warnings.push(`${question.id}: low confidence 문제인데 priority A입니다.`);
   }
+  if (!question.sourceKind) {
+    errors.push(`${question.id}: sourceKind가 필요합니다.`);
+  }
+  if (!question.sourceConfidence) {
+    errors.push(`${question.id}: sourceConfidence가 필요합니다.`);
+  }
+  if (!question.sourceNote?.trim()) {
+    errors.push(`${question.id}: sourceNote가 필요합니다.`);
+  }
   if (question.sourceYear && (!question.sourceKind || !question.sourceConfidence)) {
     errors.push(`${question.id}: 최근 3년 모드 문제는 sourceYear/sourceKind/sourceConfidence가 필요합니다.`);
   }
@@ -79,6 +111,10 @@ for (const question of sampleQuestions) {
       errors.push(`${question.id}: 존재하지 않는 trend signal id입니다. (${signalId})`);
     }
   }
+}
+
+for (const failure of findScopeCoverageFailures(sampleQuestions)) {
+  errors.push(`출제범위 coverage 최소 기준 미달: ${failure}`);
 }
 
 if (errors.length > 0) {
